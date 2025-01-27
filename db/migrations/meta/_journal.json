@@ -8,6 +8,20 @@
       "when": 1737959773135,
       "tag": "0000_open_cerise",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1737968228404,
+      "tag": "0001_sour_zzzax",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1737968654679,
+      "tag": "0002_tiny_reaper",
+      "breakpoints": true
     }
   ]
 }

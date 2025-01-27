@@ -1,0 +1,1 @@
+ALTER TABLE "users" RENAME COLUMN "user_details" TO "user_metadata";

@@ -1,4 +1,11 @@
-import { pgTable, uuid, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  text,
+  timestamp,
+  varchar,
+  jsonb,
+} from "drizzle-orm/pg-core";
 
 // Users table
 export const users = pgTable("users", {
@@ -7,6 +14,7 @@ export const users = pgTable("users", {
   full_name: text("full_name"),
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
+  user_metadata: jsonb("user_metadata"),
 });
 
 // Linked Accounts table

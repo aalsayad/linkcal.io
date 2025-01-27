@@ -1,13 +1,15 @@
 import "dotenv/config";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
-import { db } from "./index";
+import { db, testConnection } from "./index";
 
-async function main() {
+// Wrap in async function to use await
+async function runMigrations() {
+  await testConnection();
   try {
     await migrate(db, {
       migrationsFolder: "./db/migrations",
     });
-    console.log("Migration completed successfully");
+    console.log("Migrations completed");
     process.exit(0);
   } catch (error) {
     console.error("Migration failed:", error);
@@ -15,4 +17,4 @@ async function main() {
   }
 }
 
-main();
+runMigrations();
