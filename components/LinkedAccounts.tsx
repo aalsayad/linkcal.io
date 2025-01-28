@@ -16,6 +16,12 @@ import { fetchMeetings } from "@/utils/fetchLinkedAccountInfo";
 import SkeletonCard from "./SkeletonCard";
 import { forwardMeetings } from "@/utils/forwardMeetings";
 import { deleteLinkCalEvents } from "@/utils/deleteLinkCalEvents";
+import { syncMeetingsToDatabase } from "@/utils/syncMeetings";
+import {
+  ArrowPathIcon,
+  TrashIcon,
+  ArrowRightIcon,
+} from "@heroicons/react/24/outline";
 
 interface LinkedAccount {
   id: string;
@@ -76,13 +82,24 @@ const LinkedAccountsGrid = () => {
     }
   };
 
-  const handleFetchMeetings = async (id: string, email: string) => {
+  const handleSyncCalendar = async (id: string, email: string) => {
     try {
       setLoadingStates((prev) => ({ ...prev, [id]: true }));
+      console.log("🔄 Starting calendar sync for:", email);
+
       const meetings = await fetchMeetings(id, email);
-      console.log("Meetings fetched:", meetings);
+      if (meetings) {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user?.id) throw new Error("No user found");
+
+        await syncMeetingsToDatabase(meetings, id, user.id);
+        console.log("✅ Calendar sync completed successfully");
+      }
     } catch (error) {
-      console.error("Error fetching meetings:", error);
+      console.error("❌ Calendar sync failed:", error);
     } finally {
       setLoadingStates((prev) => ({ ...prev, [id]: false }));
     }
@@ -94,15 +111,12 @@ const LinkedAccountsGrid = () => {
   ) => {
     try {
       setForwardingStates((prev) => ({ ...prev, [sourceAccountId]: true }));
-      const result = await forwardMeetings(sourceAccountId, targetAccountId);
-      if (result.success) {
-        console.log(`Successfully forwarded ${result.count} meetings`);
-      }
+      await forwardMeetings(sourceAccountId, targetAccountId);
+      setSelectedTarget("");
     } catch (error) {
-      console.error("Forwarding failed:", error);
+      console.error("Forward failed:", error);
     } finally {
       setForwardingStates((prev) => ({ ...prev, [sourceAccountId]: false }));
-      setSelectedTarget("");
     }
   };
 
@@ -184,95 +198,102 @@ const LinkedAccountsGrid = () => {
             </div>
 
             <div className="flex gap-2 mt-4 flex-wrap">
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-fit"
-                onClick={() => handleFetchMeetings(account.id, account.email)}
-                disabled={
-                  loadingStates[account.id] ||
-                  forwardingStates[account.id] ||
-                  deletingStates[account.id]
-                }
-              >
-                {loadingStates[account.id] ? "Fetching..." : "Fetch Events"}
-              </Button>
+              <div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full whitespace-nowrap text-xs"
+                  onClick={() => handleSyncCalendar(account.id, account.email)}
+                  disabled={
+                    loadingStates[account.id] ||
+                    forwardingStates[account.id] ||
+                    deletingStates[account.id]
+                  }
+                >
+                  {loadingStates[account.id] ? (
+                    <>
+                      <ArrowPathIcon className="w-3 h-3 mr-1.5 animate-spin" />
+                      Syncing...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowPathIcon className="w-3 h-3 mr-1.5" />
+                      Sync Calendar
+                    </>
+                  )}
+                </Button>
+              </div>
+              <div className="h-[1px] bg-overlay-10 w-full my-4"></div>
+              <div className="flex gap-2 opacity-70">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 whitespace-nowrap text-xs py-1"
+                  onClick={() => handleDeleteLinkCalEvents(account.id)}
+                  disabled={
+                    loadingStates[account.id] ||
+                    forwardingStates[account.id] ||
+                    deletingStates[account.id]
+                  }
+                >
+                  {deletingStates[account.id] ? (
+                    <>
+                      <ArrowPathIcon className="w-3 h-3 mr-1.5 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <TrashIcon className="w-3 h-3 mr-1.5" />
+                      Delete Events
+                    </>
+                  )}
+                </Button>
 
-              {linkedAccounts.length > 1 && (
-                <div className="relative group">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="w-fit"
-                    onClick={() =>
-                      setSelectedTarget(
-                        selectedTarget === account.id ? "" : account.id
-                      )
-                    }
-                    disabled={
-                      forwardingStates[account.id] || deletingStates[account.id]
-                    }
-                  >
-                    <FaForward className="mr-2" />
-                    {forwardingStates[account.id] ? "Forwarding..." : "Forward"}
-                  </Button>
-
-                  <AnimatePresence>
-                    {selectedTarget === account.id && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        className="absolute bottom-full mb-2 right-0 bg-overlay-5 p-2 rounded-lg shadow-lg min-w-[200px] z-10"
-                      >
-                        <p className="text-xs text-white/60 mb-2">
-                          Forward to:
-                        </p>
-                        {linkedAccounts
-                          .filter((a) => a.id !== account.id)
-                          .map((target) => (
-                            <button
-                              key={target.id}
-                              onClick={() =>
-                                handleForwardMeetings(account.id, target.id)
-                              }
-                              className="flex items-center w-full p-2 text-sm hover:bg-overlay-10 rounded transition-colors"
-                              disabled={
-                                forwardingStates[account.id] ||
-                                deletingStates[account.id]
-                              }
-                            >
-                              {target.provider === "google" ? (
-                                <FaGoogle className="mr-2" />
-                              ) : (
-                                <FaMicrosoft className="mr-2" />
-                              )}
-                              {target.email}
-                            </button>
-                          ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              )}
-
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-fit"
-                onClick={() => handleDeleteLinkCalEvents(account.id)}
-                disabled={deletingStates[account.id]}
-              >
-                {deletingStates[account.id] ? (
-                  "Deleting..."
-                ) : (
-                  <>
-                    <FaTrash className="mr-2" />
-                    Delete LinkCal Events
-                  </>
-                )}
-              </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 whitespace-nowrap text-xs py-1"
+                  onClick={() => setSelectedTarget(account.id)}
+                  disabled={
+                    loadingStates[account.id] ||
+                    forwardingStates[account.id] ||
+                    deletingStates[account.id]
+                  }
+                >
+                  <ArrowRightIcon className="w-3 h-3 mr-1.5" />
+                  Forward
+                </Button>
+              </div>
             </div>
+
+            {selectedTarget === account.id && (
+              <div className="mt-4">
+                <p className="text-xs text-white/60 mb-2">Forward to:</p>
+                <div className="space-y-1">
+                  {linkedAccounts
+                    .filter((a) => a.id !== account.id)
+                    .map((target) => (
+                      <button
+                        key={target.id}
+                        onClick={() =>
+                          handleForwardMeetings(account.id, target.id)
+                        }
+                        className="flex items-center w-full p-2 text-sm hover:bg-overlay-10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={Object.values(forwardingStates).some(Boolean)}
+                      >
+                        {forwardingStates[account.id] ? (
+                          <ArrowPathIcon className="w-4 h-4 mr-2 animate-spin" />
+                        ) : target.provider === "google" ? (
+                          <FaGoogle className="w-4 h-4 mr-2" />
+                        ) : (
+                          <FaMicrosoft className="w-4 h-4 mr-2" />
+                        )}
+                        {target.email}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
           </motion.div>
         ))}
       </AnimatePresence>
