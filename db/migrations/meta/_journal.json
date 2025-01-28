@@ -22,6 +22,13 @@
       "when": 1737968654679,
       "tag": "0002_tiny_reaper",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1738000186674,
+      "tag": "0003_handy_the_captain",
+      "breakpoints": true
     }
   ]
 }

@@ -25,8 +25,6 @@ export const linkedAccounts = pgTable("linked_accounts", {
     .references(() => users.id),
   provider: varchar("provider", { length: 50 }).notNull(), // 'google' or 'microsoft'
   email: text("email").notNull(),
-  access_token: text("access_token").notNull(),
   refresh_token: text("refresh_token").notNull(),
-  expires_at: timestamp("expires_at").notNull(),
   created_at: timestamp("created_at").defaultNow(),
 });

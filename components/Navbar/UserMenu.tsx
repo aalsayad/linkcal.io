@@ -1,7 +1,7 @@
 "use client";
 
 import { createClient } from "@/utils/supabase/client";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import {
   ChevronDownIcon,
   Cog6ToothIcon,
@@ -55,7 +55,7 @@ const UserMenu = ({
             src={imageUrl}
           />
         </div>
-        <span className="text-sm font-medium">{user.name}</span>
+        <span className="text-xs md:text-sm font-medium">{user.name}</span>
         <motion.div
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
@@ -83,7 +83,7 @@ const UserMenu = ({
                   Verified
                 </span>
                 <span
-                  className="w-full block text-xs"
+                  className="w-full block text-[10px] md:text-xs"
                   style={{
                     background:
                       "linear-gradient(to right, rgba(255, 255, 255, 0.3) 95%, rgba(255, 255, 255, 0) 100%)",
@@ -95,13 +95,13 @@ const UserMenu = ({
                 </span>
               </div>
               <div className="border-t border-overlay-10 my-1" />
-              <button className="w-full flex items-center gap-2 p-2 text-sm rounded-md hover:bg-white/5 transition-colors select-none">
+              <button className="w-full flex items-center gap-2 p-2 text-xs md:text-sm rounded-md hover:bg-white/5 transition-colors select-none">
                 <Cog6ToothIcon className="h-4 w-4 text-white/60" />
                 Settings
               </button>
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-2 p-2 text-sm rounded-md hover:bg-white/5 transition-colors text-red-400 hover:text-red-300 select-none"
+                className="w-full flex items-center gap-2 p-2 text-xs md:text-sm rounded-md hover:bg-white/5 transition-colors text-red-400 hover:text-red-300 select-none"
               >
                 <ArrowLeftEndOnRectangleIcon className="h-4 w-4" />
                 Logout

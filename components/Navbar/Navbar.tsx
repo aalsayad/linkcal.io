@@ -13,7 +13,6 @@ const Navbar = async () => {
     return null;
   }
 
-  // console.log("User Details:", user);
   // Generate UI Avatar URL if no imageUrl is provided
   const avatarUrl =
     user.user_metadata?.avatar_url ||
@@ -22,9 +21,9 @@ const Navbar = async () => {
     )}&size=128&background=random&rounded=true`;
 
   return (
-    <div className="fixed h-14 border-b-[1px] border-b-overlay-10 bg-overlay-5/50 w-full backdrop-blur-lg z-50">
-      <div className="max-w-[1300px] mx-auto h-full flex items-center justify-between px-8">
-        <Image alt="Linkcal Logo" className="w-14" src={linkcalLogo} />
+    <div className="fixed h-14 border-b-[1px] border-b-overlay-10 bg-overlay-5/50 w-full backdrop-blur-lg z-50 px-4 md:px-8">
+      <div className="max-w-[1300px] mx-auto h-full flex items-center justify-between px-4 md:px-8">
+        <Image alt="Linkcal Logo" className="w-10 md:w-14" src={linkcalLogo} />
         <UserMenu
           user={{
             name: user.user_metadata?.full_name || user.email,

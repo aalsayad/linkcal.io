@@ -14,8 +14,8 @@ const LinkAccounts = () => {
   return (
     <div>
       <div>
-        <h1 className="text-2xl font-bold">Add Calendar</h1>
-        <p className="text-xs text-white/40">
+        <h1 className="text-xl md:text-2xl font-bold">Add Calendar</h1>
+        <p className="text-xs md:text-sm text-white/40">
           Connect your preferred calendar to get started
         </p>
       </div>
