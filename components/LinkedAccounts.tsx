@@ -3,11 +3,19 @@
 import React, { useEffect, useState } from "react";
 import { fetchLinkedAccounts } from "@/utils/fetchLinkedAccounts";
 import { createClient } from "@/utils/supabase/client";
-import { FaGoogle, FaMicrosoft, FaUnlink } from "react-icons/fa";
+import {
+  FaGoogle,
+  FaMicrosoft,
+  FaUnlink,
+  FaForward,
+  FaTrash,
+} from "react-icons/fa";
 import Button from "./Button";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { fetchMeetings } from "@/utils/fetchLinkedAccountInfo";
 import SkeletonCard from "./SkeletonCard";
+import { forwardMeetings } from "@/utils/forwardMeetings";
+import { deleteLinkCalEvents } from "@/utils/deleteLinkCalEvents";
 
 interface LinkedAccount {
   id: string;
@@ -18,7 +26,16 @@ interface LinkedAccount {
 const LinkedAccountsGrid = () => {
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
-  const [loading, setLoading] = useState(false); // for fetchMeetings
+  const [loadingStates, setLoadingStates] = useState<{
+    [key: string]: boolean;
+  }>({});
+  const [forwardingStates, setForwardingStates] = useState<{
+    [key: string]: boolean;
+  }>({});
+  const [selectedTarget, setSelectedTarget] = useState<string>("");
+  const [deletingStates, setDeletingStates] = useState<{
+    [key: string]: boolean;
+  }>({});
 
   useEffect(() => {
     const loadLinkedAccounts = async () => {
@@ -56,35 +73,69 @@ const LinkedAccountsGrid = () => {
       setLinkedAccounts((prev) =>
         prev.filter((account) => account.id !== accountId)
       );
-      console.log("Account unlinked successfully.");
     }
   };
 
   const handleFetchMeetings = async (id: string, email: string) => {
     try {
-      setLoading(true);
+      setLoadingStates((prev) => ({ ...prev, [id]: true }));
       const meetings = await fetchMeetings(id, email);
       console.log("Meetings fetched:", meetings);
     } catch (error) {
       console.error("Error fetching meetings:", error);
     } finally {
-      setLoading(false);
+      setLoadingStates((prev) => ({ ...prev, [id]: false }));
     }
   };
 
-  // 2. If we are still loading the accounts, show skeleton placeholders
+  const handleForwardMeetings = async (
+    sourceAccountId: string,
+    targetAccountId: string
+  ) => {
+    try {
+      setForwardingStates((prev) => ({ ...prev, [sourceAccountId]: true }));
+      const result = await forwardMeetings(sourceAccountId, targetAccountId);
+      if (result.success) {
+        console.log(`Successfully forwarded ${result.count} meetings`);
+      }
+    } catch (error) {
+      console.error("Forwarding failed:", error);
+    } finally {
+      setForwardingStates((prev) => ({ ...prev, [sourceAccountId]: false }));
+      setSelectedTarget("");
+    }
+  };
+
+  const handleDeleteLinkCalEvents = async (accountId: string) => {
+    try {
+      setDeletingStates((prev) => ({ ...prev, [accountId]: true }));
+      if (
+        !window.confirm(
+          "Are you sure you want to delete all LinkCal events from your calendar?"
+        )
+      )
+        return;
+
+      await deleteLinkCalEvents(accountId);
+      alert("All LinkCal events have been deleted from your calendar.");
+    } catch (error) {
+      console.error("Error deleting LinkCal events:", error);
+      alert("Failed to delete LinkCal events.");
+    } finally {
+      setDeletingStates((prev) => ({ ...prev, [accountId]: false }));
+    }
+  };
+
   if (loadingAccounts) {
-    // let's show, say, 6 skeleton cards in a 3-column grid
     return (
       <div className="grid lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-4 mt-8 md:mt-12">
-        {new Array(6).fill(0).map((_, i) => (
+        {Array.from({ length: 6 }).map((_, i) => (
           <SkeletonCard key={i} />
         ))}
       </div>
     );
   }
 
-  // 3. If loaded but no accounts, show empty state
   if (linkedAccounts.length === 0) {
     return (
       <div className="text-white/60 p-4">
@@ -93,7 +144,6 @@ const LinkedAccountsGrid = () => {
     );
   }
 
-  // 4. Otherwise, show actual linked accounts
   return (
     <div className="grid lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-4 mt-8 md:mt-12">
       <AnimatePresence>
@@ -116,6 +166,7 @@ const LinkedAccountsGrid = () => {
             >
               <FaUnlink className="font-light w-3 text-white/60 group-hover:text-red-500 transition-colors duration-300" />
             </button>
+
             <div>
               <div className="flex items-center mt-2 text-white/40 mb-3">
                 {account.provider === "google" ? (
@@ -132,15 +183,96 @@ const LinkedAccountsGrid = () => {
               </p>
             </div>
 
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-4 w-fit"
-              onClick={() => handleFetchMeetings(account.id, account.email)}
-              disabled={loading}
-            >
-              {loading ? "Fetching..." : "Fetch Calendar Events"}
-            </Button>
+            <div className="flex gap-2 mt-4 flex-wrap">
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-fit"
+                onClick={() => handleFetchMeetings(account.id, account.email)}
+                disabled={
+                  loadingStates[account.id] ||
+                  forwardingStates[account.id] ||
+                  deletingStates[account.id]
+                }
+              >
+                {loadingStates[account.id] ? "Fetching..." : "Fetch Events"}
+              </Button>
+
+              {linkedAccounts.length > 1 && (
+                <div className="relative group">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="w-fit"
+                    onClick={() =>
+                      setSelectedTarget(
+                        selectedTarget === account.id ? "" : account.id
+                      )
+                    }
+                    disabled={
+                      forwardingStates[account.id] || deletingStates[account.id]
+                    }
+                  >
+                    <FaForward className="mr-2" />
+                    {forwardingStates[account.id] ? "Forwarding..." : "Forward"}
+                  </Button>
+
+                  <AnimatePresence>
+                    {selectedTarget === account.id && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className="absolute bottom-full mb-2 right-0 bg-overlay-5 p-2 rounded-lg shadow-lg min-w-[200px] z-10"
+                      >
+                        <p className="text-xs text-white/60 mb-2">
+                          Forward to:
+                        </p>
+                        {linkedAccounts
+                          .filter((a) => a.id !== account.id)
+                          .map((target) => (
+                            <button
+                              key={target.id}
+                              onClick={() =>
+                                handleForwardMeetings(account.id, target.id)
+                              }
+                              className="flex items-center w-full p-2 text-sm hover:bg-overlay-10 rounded transition-colors"
+                              disabled={
+                                forwardingStates[account.id] ||
+                                deletingStates[account.id]
+                              }
+                            >
+                              {target.provider === "google" ? (
+                                <FaGoogle className="mr-2" />
+                              ) : (
+                                <FaMicrosoft className="mr-2" />
+                              )}
+                              {target.email}
+                            </button>
+                          ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-fit"
+                onClick={() => handleDeleteLinkCalEvents(account.id)}
+                disabled={deletingStates[account.id]}
+              >
+                {deletingStates[account.id] ? (
+                  "Deleting..."
+                ) : (
+                  <>
+                    <FaTrash className="mr-2" />
+                    Delete LinkCal Events
+                  </>
+                )}
+              </Button>
+            </div>
           </motion.div>
         ))}
       </AnimatePresence>
