@@ -95,21 +95,12 @@ async function fetchGoogleEvents(accessToken: string) {
           timeMax: threeMonthsAhead(), // 3 months forward
           orderBy: "startTime", // ascending by default
           fields:
-            "items(summary,start,end,attendees,location,hangoutLink,description)",
-          // 'maxResults' is omitted to allow returning *all* events in the time range
+            "items(id,status,summary,start,end,attendees,location,hangoutLink,description)",
         },
       }
     );
 
     const items = response.data.items || [];
-
-    // If you'd like them in descending order, do a client-side sort:
-    // items.sort((a: any, b: any) => {
-    //   const aDate = a.start?.dateTime || a.start?.date || new Date().toISOString();
-    //   const bDate = b.start?.dateTime || b.start?.date || new Date().toISOString();
-    //   return new Date(bDate).valueOf() - new Date(aDate).valueOf();
-    // });
-
     return items;
   } catch (error) {
     console.error(
@@ -133,24 +124,15 @@ async function fetchMicrosoftEvents(accessToken: string) {
         params: {
           startDateTime: oneMonthAgo(), // 1 month back
           endDateTime: threeMonthsAhead(), // 3 months forward
-          $top: 9999, // If you want to forcibly set a large limit
+          $orderby: "start/dateTime", // we omit this for now
+          $top: 9999, // If you want a large limit
           $select:
-            "subject,start,end,attendees,location,onlineMeeting,bodyPreview",
-          // For descending, you'd typically handle it client-side,
-          // or try $orderby: "start/dateTime desc" if supported with calendarView
+            "id,subject,start,end,attendees,location,onlineMeeting,bodyPreview,showAs,responseStatus",
         },
       }
     );
 
     const items = response.data.value || [];
-
-    // If you want them in descending order, do a client-side sort here:
-    // items.sort((a: any, b: any) => {
-    //   const aDate = a.start?.dateTime || new Date().toISOString();
-    //   const bDate = b.start?.dateTime || new Date().toISOString();
-    //   return new Date(bDate).valueOf() - new Date(aDate).valueOf();
-    // });
-
     return items;
   } catch (error) {
     console.error("Error fetching Microsoft events:", (error as Error).message);
@@ -163,24 +145,32 @@ async function fetchMicrosoftEvents(accessToken: string) {
 // ==========================
 /**
  * Normalize Google Calendar events to a common format.
+ * - Includes id, provider, name, date, attendees, location, link, message, status.
  */
 function normalizeGoogleEvents(events: any[]) {
   return events.map((event) => ({
     name: event.summary || "No title",
+    id: event.id, // the native Google event id
+    provider: "google",
     date: event.start?.dateTime || event.start?.date || "No date",
     attendees: event.attendees?.map((att: any) => att.email) || [],
     location: event.location || "No location",
     link: event.hangoutLink || "No link",
     message: event.description || "No description",
+    // Google events can have status = 'confirmed' | 'tentative' | 'cancelled'
+    status: event.status || "confirmed",
   }));
 }
 
 /**
  * Normalize Microsoft Calendar events to a common format.
+ * - Includes id, provider, name, date, attendees, location, link, message, status.
  */
 function normalizeMicrosoftEvents(events: any[]) {
   return events.map((event) => ({
     name: event.subject || "No title",
+    id: event.id, // the native Microsoft Graph event id
+    provider: "microsoft",
     date: event.start?.dateTime || "No date",
     attendees:
       event.attendees?.map((att: any) => att.emailAddress?.address) || [],
@@ -190,6 +180,9 @@ function normalizeMicrosoftEvents(events: any[]) {
       "No location",
     link: event.onlineMeeting?.joinUrl || "No link",
     message: event.bodyPreview || "No description",
+    // 'showAs' might be 'free', 'busy', 'tentative', etc.
+    // 'responseStatus' might be 'accepted', 'declined', 'tentativelyAccepted'...
+    status: event.showAs || event.responseStatus?.response || "unknown",
   }));
 }
 
@@ -199,6 +192,10 @@ function normalizeMicrosoftEvents(events: any[]) {
 /**
  * Fetch meetings/events for a given account (Google or Microsoft),
  * covering 1 month back to 3 months forward, including recurring events.
+ *
+ * @param accountId ID from 'linked_accounts' table
+ * @param email The email address associated with this account
+ * @returns Array of normalized events, each with { id, provider, name, date, ... } or null if error
  */
 export async function fetchMeetings(accountId: string, email: string) {
   const supabase = await createClient();
@@ -259,7 +256,7 @@ export async function fetchMeetings(accountId: string, email: string) {
       .eq("email", email)
       .eq("user_id", userId);
 
-    // 5. Return the normalized events
+    // 5. Return the normalized events (no sorting applied here)
     return events;
   } catch (err) {
     console.error(
