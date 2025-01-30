@@ -2,6 +2,10 @@ import NextAuth from "next-auth";
 import AzureADProvider from "next-auth/providers/azure-ad";
 import GoogleProvider from "next-auth/providers/google";
 import { createClient } from "@/utils/supabase/server";
+import { linkedAccounts } from "@/db/schema";
+import type { InferInsertModel } from "drizzle-orm";
+import { fetchMeetings } from "@/utils/meetings/fetchMeetings";
+import { syncMeetingsToDatabase } from "./utils/meetings/syncMeetings";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -67,22 +71,45 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return;
       }
 
+      // Type the new linked account data
+      type NewLinkedAccount = InferInsertModel<typeof linkedAccounts>;
+
+      const newLinkedAccount: NewLinkedAccount = {
+        user_id: supabaseUser.id,
+        provider: account.provider,
+        email: profile.email!,
+        refresh_token: account.refresh_token!,
+        // color is optional, so we can omit it
+      };
+
       // Insert into 'linked_accounts' table if not already linked
-      const { error: insertError } = await supabase
+      const { data: insertedAccount, error: insertError } = await supabase
         .from("linked_accounts")
-        .insert([
-          {
-            user_id: supabaseUser.id,
-            provider: account.provider,
-            email: profile.email,
-            refresh_token: account.refresh_token!,
-          },
-        ]);
+        .insert([newLinkedAccount])
+        .select("id")
+        .single();
 
       if (insertError) {
         console.error("Error inserting linked account:", insertError);
-      } else {
+      } else if (insertedAccount) {
         console.log("Linked account added successfully via event.");
+
+        try {
+          // Fetch meetings from the provider
+          const validEvents = await fetchMeetings(insertedAccount.id);
+
+          if (validEvents) {
+            // Sync them to the database
+            await syncMeetingsToDatabase(
+              validEvents,
+              insertedAccount.id,
+              supabaseUser.id
+            );
+            console.log("Initial meeting sync completed successfully");
+          }
+        } catch (syncError) {
+          console.error("Error during initial meeting sync:", syncError);
+        }
       }
     },
   },

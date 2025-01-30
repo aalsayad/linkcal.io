@@ -43,6 +43,27 @@
       "when": 1738066515599,
       "tag": "0005_milky_longshot",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1738141739782,
+      "tag": "0006_lowly_george_stacy",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1738148452716,
+      "tag": "0007_fluffy_quasimodo",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1738159311685,
+      "tag": "0008_opposite_scrambler",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,7 @@ import {
   Cog6ToothIcon,
   ArrowLeftEndOnRectangleIcon,
   LockClosedIcon,
+  EllipsisVerticalIcon,
 } from "@heroicons/react/24/outline";
 import Image from "next/image";
 import useClickOutside from "@/hooks/useClickOutside";
@@ -42,39 +43,44 @@ const UserMenu = ({
       <div
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex items-center gap-1.5 p-1.5 pr-3 rounded-full cursor-pointer transition-all hover:bg-white/5 group select-none",
+          "flex items-center justify-between gap-1.5 p-1 px-2 rounded-lg cursor-pointer transition-all hover:bg-white/5 group select-none w-full",
           { "bg-white/5": isOpen }
         )}
       >
-        <div className="h-7 w-7 rounded-full overflow-hidden bg-white/10">
-          <Image
-            alt="user avatar"
-            className="h-full object-cover"
-            width={300}
-            height={300}
-            src={imageUrl}
-          />
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-full overflow-hidden bg-white/10 border-[1px] border-overlay-20">
+            <Image
+              alt="user avatar"
+              className="h-full object-cover"
+              width={300}
+              height={300}
+              src={imageUrl}
+            />
+          </div>
+          <span className="text-xs md:text-sm">{user.name}</span>
         </div>
-        <span className="text-xs md:text-sm font-medium">{user.name}</span>
-        <motion.div
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        >
-          <ChevronDownIcon className="h-2 w-2 text-white/60 group-hover:text-white/80 transition-colors" />
-        </motion.div>
+
+        <EllipsisVerticalIcon
+          className={cn(
+            "h-4 text-white/40 group-hover:text-white/70 transition-colors duration-300 ease-in-out",
+            { "text-white/70": isOpen }
+          )}
+        />
       </div>
 
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{
-              duration: 0.4,
+              duration: 0.25,
               ease: [0.4, 0, 0.2, 1],
             }}
-            className="absolute right-0 mt-3 w-fit min-w-48 max-w-60 origin-top-right rounded-lg bg-overlay-5 border border-overlay-10 shadow-lg select-none"
+            className={cn(
+              "absolute right-0 bottom-full w-full mb-2 min-w-48 max-w-60 origin-bottom-right rounded-lg bg-overlay-5 border border-overlay-10 shadow-lg select-none z-50"
+            )}
           >
             <div className="p-1.5">
               <div className="px-2.5 py-1.5 select-none font-thin">

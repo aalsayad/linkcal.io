@@ -12,11 +12,11 @@ import {
 } from "react-icons/fa";
 import Button from "./Button";
 import { motion, AnimatePresence } from "framer-motion";
-import { fetchMeetings } from "@/utils/fetchLinkedAccountInfo";
+import { fetchMeetings } from "@/utils/meetings/fetchMeetings";
 import SkeletonCard from "./SkeletonCard";
-import { forwardMeetings } from "@/utils/forwardMeetings";
-import { deleteLinkCalEvents } from "@/utils/deleteLinkCalEvents";
-import { syncMeetingsToDatabase } from "@/utils/syncMeetings";
+import { forwardMeetings } from "@/utils/meetings/forwardMeetings";
+import { deleteLinkCalEvents } from "@/utils/meetings/deleteLinkCalEvents";
+import { syncMeetingsToDatabase } from "@/utils/meetings/syncMeetings";
 import {
   ArrowPathIcon,
   TrashIcon,
@@ -27,21 +27,34 @@ interface LinkedAccount {
   id: string;
   email: string;
   provider: string;
+  color?: string;
 }
+
+const CALENDAR_COLORS = [
+  "#FF6B6B", // bright red
+  "#4ECDC4", // bright teal
+  "#45B7D1", // bright blue
+  "#96CEB4", // sage green
+  "#FFD93D", // bright yellow
+  "#FF8CC8", // bright pink
+  "#A06CD5", // bright purple
+  "#4CAF50", // bright green
+];
 
 const LinkedAccountsGrid = () => {
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [loadingStates, setLoadingStates] = useState<{
-    [key: string]: boolean;
+    [linkedAccountId: string]: boolean;
   }>({});
   const [forwardingStates, setForwardingStates] = useState<{
-    [key: string]: boolean;
+    [linkedAccountId: string]: boolean;
   }>({});
   const [selectedTarget, setSelectedTarget] = useState<string>("");
   const [deletingStates, setDeletingStates] = useState<{
-    [key: string]: boolean;
+    [linkedAccountId: string]: boolean;
   }>({});
+  const [colorPickerOpen, setColorPickerOpen] = useState<string | null>(null);
 
   useEffect(() => {
     const loadLinkedAccounts = async () => {
@@ -66,63 +79,70 @@ const LinkedAccountsGrid = () => {
     loadLinkedAccounts();
   }, []);
 
-  const handleUnlinkAccount = async (accountId: string) => {
+  const handleUnlinkAccount = async (linkedAccountId: string) => {
     const supabase = createClient();
     const { error } = await supabase
       .from("linked_accounts")
       .delete()
-      .eq("id", accountId);
+      .eq("id", linkedAccountId);
 
     if (error) {
       console.error("Error unlinking account:", error);
     } else {
       setLinkedAccounts((prev) =>
-        prev.filter((account) => account.id !== accountId)
+        prev.filter((account) => account.id !== linkedAccountId)
       );
     }
   };
 
-  const handleSyncCalendar = async (id: string, email: string) => {
+  const handleSyncCalendar = async (linkedAccountId: string, email: string) => {
     try {
-      setLoadingStates((prev) => ({ ...prev, [id]: true }));
+      setLoadingStates((prev) => ({ ...prev, [linkedAccountId]: true }));
       console.log("🔄 Starting calendar sync for:", email);
 
-      const meetings = await fetchMeetings(id, email);
+      const meetings = await fetchMeetings(linkedAccountId);
       if (meetings) {
+        console.log(meetings);
         const supabase = createClient();
         const {
           data: { user },
         } = await supabase.auth.getUser();
         if (!user?.id) throw new Error("No user found");
 
-        await syncMeetingsToDatabase(meetings, id, user.id);
+        await syncMeetingsToDatabase(meetings, linkedAccountId, user.id);
         console.log("✅ Calendar sync completed successfully");
       }
     } catch (error) {
       console.error("❌ Calendar sync failed:", error);
     } finally {
-      setLoadingStates((prev) => ({ ...prev, [id]: false }));
+      setLoadingStates((prev) => ({ ...prev, [linkedAccountId]: false }));
     }
   };
 
   const handleForwardMeetings = async (
-    sourceAccountId: string,
-    targetAccountId: string
+    sourceLinkedAccountId: string,
+    targetLinkedAccountId: string
   ) => {
     try {
-      setForwardingStates((prev) => ({ ...prev, [sourceAccountId]: true }));
-      await forwardMeetings(sourceAccountId, targetAccountId);
+      setForwardingStates((prev) => ({
+        ...prev,
+        [sourceLinkedAccountId]: true,
+      }));
+      await forwardMeetings(sourceLinkedAccountId, targetLinkedAccountId);
       setSelectedTarget("");
     } catch (error) {
       console.error("Forward failed:", error);
     } finally {
-      setForwardingStates((prev) => ({ ...prev, [sourceAccountId]: false }));
+      setForwardingStates((prev) => ({
+        ...prev,
+        [sourceLinkedAccountId]: false,
+      }));
     }
   };
 
-  const handleDeleteLinkCalEvents = async (accountId: string) => {
+  const handleDeleteLinkCalEvents = async (linkedAccountId: string) => {
     try {
-      setDeletingStates((prev) => ({ ...prev, [accountId]: true }));
+      setDeletingStates((prev) => ({ ...prev, [linkedAccountId]: true }));
       if (
         !window.confirm(
           "Are you sure you want to delete all LinkCal events from your calendar?"
@@ -130,14 +150,31 @@ const LinkedAccountsGrid = () => {
       )
         return;
 
-      await deleteLinkCalEvents(accountId);
+      await deleteLinkCalEvents(linkedAccountId);
       alert("All LinkCal events have been deleted from your calendar.");
     } catch (error) {
       console.error("Error deleting LinkCal events:", error);
       alert("Failed to delete LinkCal events.");
     } finally {
-      setDeletingStates((prev) => ({ ...prev, [accountId]: false }));
+      setDeletingStates((prev) => ({ ...prev, [linkedAccountId]: false }));
     }
+  };
+
+  const handleColorSelect = async (accountId: string, color: string) => {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("linked_accounts")
+      .update({ color })
+      .eq("id", accountId);
+
+    if (error) {
+      console.error("Error updating color:", error);
+    } else {
+      setLinkedAccounts((prev) =>
+        prev.map((acc) => (acc.id === accountId ? { ...acc, color } : acc))
+      );
+    }
+    setColorPickerOpen(null);
   };
 
   if (loadingAccounts) {
@@ -192,9 +229,37 @@ const LinkedAccountsGrid = () => {
                   {account.provider}
                 </span>
               </div>
-              <p className="text-base md:text-lg font-medium text-white/90 mb-6 md:mb-8">
-                {account.email}
-              </p>
+              <div className="flex items-center gap-4 mt-2">
+                <div className="relative">
+                  <button
+                    onClick={() =>
+                      setColorPickerOpen((prev) =>
+                        prev === account.id ? null : account.id
+                      )
+                    }
+                    className="w-4 h-4 rounded-full hover:scale-110 transition-transform"
+                    style={{ backgroundColor: account.color || "#ffffff" }}
+                  />
+
+                  {colorPickerOpen === account.id && (
+                    <div className="absolute top-full left-0 mt-2 p-2 bg-overlay-5 border border-overlay-10 rounded-lg shadow-lg z-10">
+                      <div className="grid grid-cols-4 gap-2">
+                        {CALENDAR_COLORS.map((color) => (
+                          <button
+                            key={color}
+                            onClick={() => handleColorSelect(account.id, color)}
+                            className="w-6 h-6 rounded-full hover:scale-110 transition-transform"
+                            style={{ backgroundColor: color }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <p className="text-base md:text-lg font-medium text-white/90">
+                  {account.email}
+                </p>
+              </div>
             </div>
 
             <div className="flex gap-2 mt-4 flex-wrap">

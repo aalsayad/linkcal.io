@@ -1,21 +1,9 @@
 "use server";
 import { createClient } from "@/utils/supabase/server";
-import { NormalizedEvent } from "./fetchLinkedAccountInfo";
-
-interface MeetingUpdate {
-  external_event_id: string;
-  name: string;
-  date: string;
-  attendees: string[];
-  location: string;
-  link: string;
-  message: string;
-  status: string;
-  updated_at: string;
-}
+import type { Meeting } from "@/db/schema";
 
 export async function syncMeetingsToDatabase(
-  validEvents: NormalizedEvent[],
+  validEvents: Omit<Meeting, "user_id" | "created_at" | "updated_at">[],
   accountId: string,
   userId: string
 ) {
@@ -24,9 +12,9 @@ export async function syncMeetingsToDatabase(
   // Filter out Linkcal events first
   const nonLinkcalEvents = validEvents.filter((event) => {
     const isLinkcalEvent =
-      event.name.toLowerCase().includes("linkcal") ||
-      event.name.toLowerCase().includes("timeblock") ||
-      event.message.toLowerCase().includes("meeting forwarded by linkcal.io");
+      event.name?.toLowerCase().includes("linkcal") ||
+      event.name?.toLowerCase().includes("timeblock") ||
+      event.message?.toLowerCase().includes("meeting forwarded by linkcal.io");
 
     if (isLinkcalEvent) {
       console.log("🔍 [SYNC] Filtering out Linkcal event:", event.name);
@@ -47,7 +35,7 @@ export async function syncMeetingsToDatabase(
   const { data: existingMeetings, error: fetchError } = await supabase
     .from("meetings")
     .select(
-      "id, external_event_id, name, date, attendees, location, link, message, status"
+      "id, external_event_id, name, start_date, end_date, attendees, location, link, message, status, created_at"
     )
     .eq("linked_account_id", accountId);
 
@@ -78,7 +66,8 @@ export async function syncMeetingsToDatabase(
       external_event_id: event.id,
       provider: event.provider,
       name: event.name,
-      date: new Date(event.date).toISOString(),
+      start_date: event.start_date,
+      end_date: event.end_date,
       attendees: event.attendees,
       location: event.location,
       link: event.link,
@@ -89,18 +78,21 @@ export async function syncMeetingsToDatabase(
   // Prepare update data
   const updateData = nonLinkcalEvents
     .filter((event) => existingIds.has(event.id))
-    .map((event): MeetingUpdate | null => {
+    .map((event): Meeting | null => {
       const existing = existingMeetings?.find(
         (m) => m.external_event_id === event.id
       );
       if (!existing) return null;
 
-      const newDate = new Date(event.date).toISOString();
-      const existingDate = existing.date;
+      const newStartDate = event.start_date;
+      const newEndDate = event.end_date;
+      const existingStartDate = existing.start_date;
+      const existingEndDate = existing.end_date;
 
       const hasChanges =
         existing.name !== event.name ||
-        existingDate !== newDate ||
+        existingStartDate !== newStartDate ||
+        existingEndDate !== newEndDate ||
         JSON.stringify(existing.attendees) !==
           JSON.stringify(event.attendees) ||
         existing.location !== event.location ||
@@ -113,16 +105,22 @@ export async function syncMeetingsToDatabase(
       return {
         external_event_id: event.id,
         name: event.name,
-        date: newDate,
+        start_date: newStartDate,
+        end_date: newEndDate,
         attendees: event.attendees,
         location: event.location,
         link: event.link,
         message: event.message,
         status: event.status,
-        updated_at: new Date().toISOString(),
+        updated_at: new Date(),
+        id: existing.id,
+        linked_account_id: accountId,
+        user_id: userId,
+        created_at: existing.created_at,
+        provider: event.provider,
       };
     })
-    .filter((d): d is MeetingUpdate => d !== null);
+    .filter((d): d is Meeting => d !== null);
 
   console.log("🔵 [SYNC] Operations:", {
     insert: insertData.length,

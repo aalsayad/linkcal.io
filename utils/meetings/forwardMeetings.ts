@@ -7,6 +7,7 @@ import {
   refreshGoogleToken,
   refreshMicrosoftToken,
 } from "@/utils/tokenRefresh";
+import type { Meeting, LinkedAccount } from "@/db/schema";
 
 export async function forwardMeetings(
   sourceAccountId: string,
@@ -88,18 +89,18 @@ export async function forwardMeetings(
   }
 
   // Function to forward a single meeting
-  async function forwardMeeting(meeting: any): Promise<void> {
+  async function forwardMeeting(meeting: Meeting): Promise<void> {
     console.log(`\n🔄 Processing meeting: "${meeting.name}"`);
 
     // Check if this meeting originated from the target account
-    if (meeting.name.includes(`forwarded from ${targetAccountId}`)) {
+    if (meeting.name?.includes(`forwarded from ${targetAccountId}`)) {
       console.log(`⏭️ Meeting originated from target account, skipping...`);
       return;
     }
 
     // Format meeting details
-    const meetingStart = new Date(meeting.date);
-    const meetingEnd = new Date(new Date(meeting.date).getTime() + 3600000);
+    const meetingStart = new Date(meeting.start_date);
+    const meetingEnd = new Date(meeting.end_date);
     const formattedStart = meetingStart.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
@@ -111,7 +112,9 @@ export async function forwardMeetings(
 
     const meetingDetails = `Name: ${meeting.name}
 Time: ${formattedStart} - ${formattedEnd}
-Attendees: ${meeting.attendees?.join(", ") || "No attendees"}
+Attendees: ${
+      ((meeting.attendees as string[]) || []).join(", ") || "No attendees"
+    }
 ${meeting.message ? `Body: ${meeting.message}\n` : ""}${
       meeting.link ? `Link: ${meeting.link}\n` : ""
     }
@@ -130,9 +133,9 @@ Meeting forwarded by Linkcal.io`;
           headers: { Authorization: `Bearer ${accessToken}` },
           params: {
             q: eventTitle,
-            timeMin: new Date(meeting.date).toISOString(),
+            timeMin: new Date(meeting.start_date).toISOString(),
             timeMax: new Date(
-              new Date(meeting.date).getTime() + 86400000
+              new Date(meeting.end_date).getTime() + 86400000
             ).toISOString(),
             singleEvents: true,
           },
@@ -175,7 +178,7 @@ Meeting forwarded by Linkcal.io`;
           headers: { Authorization: `Bearer ${accessToken}` },
           params: {
             $filter: `subject eq '${eventTitle}' and start/dateTime ge '${new Date(
-              meeting.date
+              meeting.start_date
             ).toISOString()}'`,
             $top: 1,
           },
@@ -210,7 +213,7 @@ Meeting forwarded by Linkcal.io`;
 
   // Add retry helper function
   async function forwardMeetingWithRetry(
-    meeting: any,
+    meeting: Meeting,
     maxRetries = 3
   ): Promise<void> {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
