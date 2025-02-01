@@ -27,9 +27,11 @@ export const linkedAccounts = pgTable("linked_accounts", {
     .references(() => users.id),
   provider: varchar("provider", { length: 50 }).notNull(), // 'google' or 'microsoft'
   email: text("email").notNull(),
+  account_name: text("account_name"),
   color: varchar("color", { length: 7 }), // Stores hex colors like #FF0000
   refresh_token: text("refresh_token").notNull(),
   created_at: timestamp("created_at").defaultNow(),
+  last_synced: timestamp("last_synced"),
 });
 
 // Meetings table

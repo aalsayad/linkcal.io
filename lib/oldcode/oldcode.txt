@@ -1,0 +1,123 @@
+"use client";
+
+import React, { useState } from "react";
+import Button from "@/components/Button";
+import { PlusIcon } from "@heroicons/react/24/outline";
+import { signIn } from "next-auth/react";
+import { useQuery } from "@tanstack/react-query";
+import { fetchLinkedAccounts } from "@/utils/fetchLinkedAccounts";
+import Image from "next/image";
+import { createClient } from "@/utils/supabase/client";
+import Modal from "@/components/Modal";
+import LinkAccounts from "@/components/LinkAccounts";
+
+const handleGoogleSignIn = () => {
+  signIn("google");
+};
+const handleMicrosoftSignIn = () => {
+  signIn("azure-ad");
+};
+
+const Accounts = () => {
+  const { data: linkedAccounts, isLoading } = useQuery({
+    queryKey: ["linkedAccounts"],
+    queryFn: async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      return user ? fetchLinkedAccounts(user.id) : [];
+    },
+    staleTime: 1000 * 60 * 5, // Cache data for 5 minutes
+  });
+
+  // state to control modal visibility
+  const [showModal, setShowModal] = useState(false);
+
+  return (
+    <div className="min-h-screen bg-overlay-5 flex flex-col gap-8">
+      {/* Header */}
+      <div className="flex flex-col gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Accounts</h1>
+          <p className="text-sm text-white/40">
+            Connect your preferred calendar to get started
+          </p>
+        </div>
+        <div>
+          <Button
+            onClick={() => setShowModal(true)}
+            size="base"
+            variant="outline"
+            className="w-fit gap-2 group"
+          >
+            <PlusIcon className="w-4 h-4 group-hover:rotate-90 transition-all duration-300" />
+            Add Account
+          </Button>
+        </div>
+      </div>
+
+      {/* Modal for linking accounts */}
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
+        <LinkAccounts />
+      </Modal>
+
+      {/* Account Linking Section */}
+      <div className="flex gap-4">
+        <Button
+          onClick={handleGoogleSignIn}
+          size="base"
+          variant="outline"
+          className="w-fit gap-2 group"
+        >
+          <PlusIcon className="w-4 h-4 group-hover:rotate-90 transition-all duration-300" />
+          Link Google Account
+        </Button>
+
+        <Button
+          onClick={handleMicrosoftSignIn}
+          size="base"
+          variant="outline"
+          className="w-fit gap-2 group"
+        >
+          <PlusIcon className="w-4 h-4 group-hover:rotate-90 transition-all duration-300" />
+          Link Microsoft Account
+        </Button>
+      </div>
+
+      {/* Linked Accounts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {isLoading ? (
+          <p className="text-white/40">Loading accounts...</p>
+        ) : (linkedAccounts || []).length > 0 ? (
+          linkedAccounts?.map((account) => (
+            <div
+              key={account.id}
+              className="p-4 bg-overlay-10 rounded-xl flex items-center gap-4"
+            >
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: account.color }}
+              >
+                <Image
+                  src={`/icons/${account.provider}.svg`}
+                  alt={account.provider}
+                  width={24}
+                  height={24}
+                />
+              </div>
+              <div>
+                <p className="text-sm font-medium">{account.email}</p>
+                <p className="text-xs text-white/40">{account.provider}</p>
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="text-white/40">No linked accounts</p>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Accounts;

@@ -1,36 +1,47 @@
-import UserMenu from "./UserMenu";
-import { createClient } from "@/utils/supabase/server";
-import Image from "next/image";
-import linkcalLogo from "@/public/linkcal.svg";
+"use client";
+import Link from "next/link";
+import { ChevronRightIcon } from "@heroicons/react/24/outline";
+import { useQuery } from "@tanstack/react-query";
+import { createClient } from "@/utils/supabase/client";
+import { usePathname } from "next/navigation";
 
-const Navbar = async () => {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+const Navbar = () => {
+  const pathname = usePathname();
+  const { data: userName, isLoading } = useQuery({
+    queryKey: ["user"],
+    queryFn: async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-  if (!user) {
-    return null;
-  }
+      if (!user) return null;
 
-  // Generate UI Avatar URL if no imageUrl is provided
-  const avatarUrl =
-    user.user_metadata?.avatar_url ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      user.user_metadata?.full_name || user.email
-    )}&size=128&background=random&rounded=true`;
+      return user.user_metadata?.full_name || user.email;
+    },
+  });
+  console.log(userName);
 
   return (
-    <div className="fixed h-14 border-b-[1px] border-b-overlay-10 bg-overlay-5/50 w-full backdrop-blur-lg z-50 px-4 md:px-8">
-      <div className="max-w-[1300px] mx-auto h-full flex items-center justify-between px-4 md:px-8">
-        <Image alt="Linkcal Logo" className="w-10 md:w-14" src={linkcalLogo} />
-        <UserMenu
-          user={{
-            name: user.user_metadata?.full_name || user.email,
-            email: user.email || "hi@mail.com",
-          }}
-          imageUrl={avatarUrl}
-        />
+    <div className="w-full min-h-14 bg-overlay-5 border-b border-overlay-10">
+      <div className="max-w-[1350px] mx-auto h-full flex items-center justify-between px-4 md:px-8">
+        <div className="flex items-center">
+          {/* Breadcrumbs */}
+          <div className="flex items-center gap-1 text-xs text-white pointer-events-none opacity-40 font-thin min-w-[200px]">
+            <div>
+              {isLoading ? (
+                // Use invisible placeholder text so the width stays constant
+                <span className="invisible">Placeholder Name</span>
+              ) : (
+                userName
+              )}
+            </div>
+            <span className="text-white">
+              <ChevronRightIcon className="w-2 h-2" />
+            </span>
+            <div className="capitalize">{pathname.split("/").pop()}</div>
+          </div>
+        </div>
       </div>
     </div>
   );

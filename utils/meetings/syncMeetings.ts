@@ -185,6 +185,20 @@ export async function syncMeetingsToDatabase(
       );
     }
 
+    // After all sync operations, update the last_synced timestamp for this linked account.
+    const { error: updateError } = await supabase
+      .from("linked_accounts")
+      .update({ last_synced: new Date() })
+      .eq("id", accountId);
+    if (updateError) {
+      console.error(
+        "🔴 [SYNC] Failed to update last_synced timestamp:",
+        updateError.message
+      );
+    } else {
+      console.log("🟢 [SYNC] last_synced timestamp updated.");
+    }
+
     console.log("🟢 [SYNC] Synchronization complete");
     return nonLinkcalEvents;
   } catch (error) {

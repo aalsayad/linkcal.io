@@ -1,0 +1,1 @@
+ALTER TABLE "linked_accounts" ADD COLUMN "account_name" text;

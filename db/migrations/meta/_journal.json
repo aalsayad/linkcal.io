@@ -64,6 +64,20 @@
       "when": 1738159311685,
       "tag": "0008_opposite_scrambler",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1738429951996,
+      "tag": "0009_talented_daimon_hellstrom",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1738431106891,
+      "tag": "0010_warm_ben_parker",
+      "breakpoints": true
     }
   ]
 }

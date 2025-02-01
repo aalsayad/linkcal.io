@@ -1,15 +1,5 @@
-"use client";
-
-import Calendar from "@/components/Calendar";
-import LinkAccounts from "@/components/LinkAccounts";
-import LinkedAccounts from "@/components/LinkedAccounts";
+import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  return (
-    <>
-      <LinkAccounts />
-      <LinkedAccounts />
-      <Calendar />
-    </>
-  );
+  redirect("/calendar");
 }
