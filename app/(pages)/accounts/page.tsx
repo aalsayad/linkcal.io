@@ -65,7 +65,7 @@ const Accounts = () => {
     setShowModal(true);
   };
 
-  const handleStartAuth = async (provider: "google" | "azure-ad") => {
+  const handleStartAuth = async (provider: "google" | "azure") => {
     setPollingEnabled(true);
     window.open(
       `/accounts/link?provider=${provider}`,
@@ -263,7 +263,7 @@ const Accounts = () => {
                 Google
               </Button>
               <Button
-                onClick={() => handleStartAuth("azure-ad")}
+                onClick={() => handleStartAuth("azure")}
                 size="base"
                 variant="outline"
                 className="flex gap-2 items-center"

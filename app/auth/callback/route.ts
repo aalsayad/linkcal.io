@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { linkAccount } from "@/utils/linkAccount";
 import { createServiceClient } from "@/utils/supabase/serviceClient";
 import { v4 as uuidv4 } from "uuid";
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
@@ -61,7 +62,7 @@ export async function GET(request: Request) {
     webhook_channel_id: uuidv4(),
   };
 
-  console.log("Passing in new Link data via supabase service client:", newLink);
+  console.log("Creating new linked account:", newLink);
   try {
     // Pass in the needed data from the session to linkAccount.
     const { error } = await supabaseServiceClient
@@ -69,10 +70,11 @@ export async function GET(request: Request) {
       .insert(newLink);
     if (error) {
       console.error("Error inserting new link:", error);
+    } else {
+      console.log("Account linked successfully.");
     }
-    console.log("[auth/callback/route.ts] Account linked successfully.");
   } catch (err) {
-    console.error("[auth/callback/route.ts] Error linking account:", err);
+    console.error("Error linking account:", err);
   }
 
   //sync the user's meetings to the meetings table

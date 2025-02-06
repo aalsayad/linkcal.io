@@ -121,7 +121,8 @@ export async function linkAccount(
       }
     } else if (
       authData.provider === "microsoft" ||
-      authData.provider === "azure-ad"
+      authData.provider === "azure-ad" ||
+      authData.provider === "azure"
     ) {
       // Refresh the token to receive a valid Microsoft access token.
       const tokens = await refreshMicrosoftToken(authData.refreshToken);

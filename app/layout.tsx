@@ -4,7 +4,6 @@ import "./globals.css";
 import Navbar from "@/components/Navbar/Navbar";
 import Sidebar from "@/components/Sidebar/Sidebar";
 import QueryProvider from "@/components/QueryProvider";
-import { SessionProvider } from "next-auth/react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,31 +22,28 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <QueryProvider>
-      <SessionProvider>
-        <html lang="en">
-          <head />
-          <body
-            className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-          >
-            <div className="h-screen w-screen flex">
-              <div className="w-fit h-full">
-                <Sidebar />
-              </div>
-
-              {/* Main content area with offset */}
-              <div className="w-full flex flex-col items-center overflow-y-auto">
-                {/* <Navbar /> */}
-                <div className="max-w-[1350px] w-full p-8">{children}</div>
-              </div>
+      <html lang="en">
+        <head />
+        <body
+          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        >
+          <div className="h-screen w-screen flex">
+            <div className="w-fit h-full">
+              <Sidebar />
             </div>
-          </body>
-        </html>
-      </SessionProvider>
+            {/* Main content area */}
+            <div className="w-full flex flex-col items-center overflow-y-auto">
+              {/* <Navbar /> can be re-enabled if needed */}
+              <div className="max-w-[1350px] w-full p-8">{children}</div>
+            </div>
+          </div>
+        </body>
+      </html>
     </QueryProvider>
   );
 }

@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { createClient } from "@/utils/supabase/server";
 
 export async function GET(request: Request) {
@@ -24,22 +23,14 @@ export async function GET(request: Request) {
 
     console.log("Supabase user:", user);
 
-    // Retrieve the session using the auth function
-    const session = await auth();
+    // Continue with any linking logic you previously had.
+    // For example, if you need to pass additional session details,
+    // you can work with the user object returned by supabase.auth.getUser().
 
-    if (!session) {
-      console.error("No session found.");
-      return NextResponse.json({ error: "No session found" }, { status: 401 });
-    }
-
-    console.log("Session details:", session);
-
-    if (!session) {
-      console.error("No NextAuth session found.");
-      return NextResponse.redirect("/");
-    }
-
-    console.log("NextAuth session:", session);
+    return NextResponse.json({
+      success: true,
+      message: "User authenticated via Supabase!",
+    });
   } catch (error) {
     console.error("Error retrieving session:", error);
     return NextResponse.json(

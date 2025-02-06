@@ -2,13 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { updateSession } from "./utils/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  // Exclude Next Auth endpoints and the login page
-  if (pathname.startsWith("/api/auth") || pathname.startsWith("/login")) {
-    return NextResponse.next();
-  }
-
   // Process the session update for all other paths
   return await updateSession(request);
 }

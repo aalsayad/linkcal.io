@@ -82,7 +82,7 @@ export async function fetchMeetings(
         break;
       }
       case "microsoft":
-      case "azure-ad": {
+      case "azure": {
         console.debug(
           "[fetchMeetings.ts] Fetching events from Microsoft Calendar..."
         );

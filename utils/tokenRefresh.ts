@@ -31,12 +31,16 @@ export async function refreshGoogleToken(
 export async function refreshMicrosoftToken(
   refreshToken: string
 ): Promise<TokenResponse> {
+  console.log(
+    "refreshing token for microsoft using stored token:",
+    refreshToken
+  );
   try {
     const response = await axios.post(
       "https://login.microsoftonline.com/common/oauth2/v2.0/token",
       new URLSearchParams({
-        client_id: process.env.AUTH_AZURE_AD_ID || "",
-        client_secret: process.env.AUTH_AZURE_AD_SECRET || "",
+        client_id: process.env.NEXT_PUBLIC_MICROSOFT_CLIENT_ID || "",
+        client_secret: process.env.MICROSOFT_CLIENT_SECRET || "",
         refresh_token: refreshToken,
         grant_type: "refresh_token",
       }),
@@ -65,7 +69,7 @@ export async function refreshAndUpdateToken(
 
   if (provider === "google") {
     tokens = await refreshGoogleToken(currentRefreshToken);
-  } else if (["azure-ad", "microsoft"].includes(provider)) {
+  } else if (["azure-ad", "microsoft", "azure"].includes(provider)) {
     tokens = await refreshMicrosoftToken(currentRefreshToken);
   } else {
     throw new Error("Unsupported provider");
