@@ -9,14 +9,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
 import { fetchLinkedAccounts } from "@/utils/fetchLinkedAccounts";
 import { parseUtcTimestamp } from "@/utils/formatDate";
-
-// Import your logos from the public folder
 import googleIcon from "@/public/logos/google-logo.svg";
 import microsoftIcon from "@/public/logos/microsoft-logo.svg";
-
-// Import meetings utilities
 import { fetchMeetings } from "@/utils/meetings/fetchMeetings";
 import { syncMeetingsToDatabase } from "@/utils/meetings/syncMeetings";
+import { linkAccount, AuthData } from "@/utils/linkAccount";
 
 type LinkedAccount = {
   id: string;
@@ -36,7 +33,7 @@ const colorOptions = [
   "#A06CD5",
 ];
 
-const STALE_THRESHOLD_MS = 1000 * 60 * 5; // example 5 minutes
+const STALE_THRESHOLD_MS = 1000 * 60 * 5; // 5 minutes
 
 const Accounts = () => {
   const queryClient = useQueryClient();
@@ -47,40 +44,28 @@ const Accounts = () => {
       const { data: userData } = await supabase.auth.getUser();
       return userData?.user ? fetchLinkedAccounts(userData.user.id) : [];
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: STALE_THRESHOLD_MS,
   });
 
-  // Local state for modal control and extra account info
   const [showModal, setShowModal] = useState(false);
-  const [authData, setAuthData] = useState<{
-    provider: string;
-    email: string;
-    refreshToken: string;
-  } | null>(null);
+  const [authData, setAuthData] = useState<AuthData | null>(null);
   const [accountName, setAccountName] = useState("");
   const [selectedColor, setSelectedColor] = useState("#ffffff");
-  // Control polling if you decide to use it elsewhere
   const [pollingEnabled, setPollingEnabled] = useState(false);
-  // State to manage syncing status feedback for linking a new account ("idle" | "syncing" | "done")
   const [syncStatus, setSyncStatus] = useState("idle");
-  // State to manage manual resync status per account ("idle" | "syncing" | "done")
   const [manualResyncStatus, setManualResyncStatus] = useState<{
     [key: string]: "idle" | "syncing" | "done";
   }>({});
 
-  // Clear the tempLinkedAccount from localStorage when the page loads
   useEffect(() => {
     localStorage.removeItem("tempLinkedAccount");
   }, []);
 
-  // Opens the modal to start account linking
   const handleAddAccount = () => {
     setShowModal(true);
   };
 
-  // Opens the auth pop-up window to start the linking process and enable polling
   const handleStartAuth = async (provider: "google" | "azure-ad") => {
-    // Enable polling only when a provider is clicked.
     setPollingEnabled(true);
     window.open(
       `/accounts/link?provider=${provider}`,
@@ -89,12 +74,10 @@ const Accounts = () => {
     );
   };
 
-  // Listen for changes on localStorage key "tempLinkedAccount"
   useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === "tempLinkedAccount" && event.newValue) {
         const data = JSON.parse(event.newValue);
-        // Check if the stored data is fresh
         if (Date.now() - data.timestamp < STALE_THRESHOLD_MS) {
           setAuthData({
             refreshToken: data.refreshToken,
@@ -102,7 +85,6 @@ const Accounts = () => {
             provider: data.provider,
           });
         } else {
-          // Clear stale data
           localStorage.removeItem("tempLinkedAccount");
         }
       }
@@ -110,92 +92,32 @@ const Accounts = () => {
 
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
-  }, [authData]);
+  }, []);
 
-  // (Optional) Poll localStorage periodically if needed
-  useEffect(() => {
-    if (showModal && pollingEnabled) {
-      const interval = setInterval(() => {
-        const storedData = localStorage.getItem("tempLinkedAccount");
-        if (storedData) {
-          const data = JSON.parse(storedData);
-          if (Date.now() - data.timestamp < STALE_THRESHOLD_MS && !authData) {
-            setAuthData({
-              refreshToken: data.refreshToken,
-              email: data.email,
-              provider: data.provider,
-            });
-          } else {
-            localStorage.removeItem("tempLinkedAccount");
-          }
-        }
-      }, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [showModal, pollingEnabled, authData]);
-
-  // Handle linking account to Supabase (using Supabase auth for user id)
+  // Updated function using the new utility function
   const handleLinkAccount = async () => {
-    // Reset syncing status to idle
     setSyncStatus("idle");
-
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      alert("User not authenticated. Please log in.");
-      return;
-    }
-
-    const newLink = {
-      user_id: user.id,
-      provider: authData?.provider,
-      email: authData?.email,
-      refresh_token: authData?.refreshToken,
-      color: selectedColor,
-      account_name: accountName,
-    };
-
-    // Insert the new linked account and return the inserted row
-    const { data, error } = await supabase
-      .from("linked_accounts")
-      .insert([newLink])
-      .select();
-    if (error || !data?.length) {
+    try {
+      setSyncStatus("syncing");
+      await linkAccount(authData, accountName, selectedColor);
+      console.log("Account linked successfully");
+      setSyncStatus("done");
+    } catch (error: any) {
       console.error("Error linking account:", error);
-      return;
+      alert(error.message);
+      setSyncStatus("idle");
+    } finally {
+      // Reset state and clean up
+      setAuthData(null);
+      setShowModal(false);
+      setAccountName("");
+      setSelectedColor("#ffffff");
+      setPollingEnabled(false);
+      localStorage.removeItem("tempLinkedAccount");
+      queryClient.invalidateQueries({ queryKey: ["linkedAccounts"] });
     }
-
-    const insertedAccount = data[0];
-    console.log("Account linked successfully");
-
-    // Set syncing status to true and update button text feedback
-    setSyncStatus("syncing");
-
-    // Fetch meetings using the newly linked account id and sync them to the database
-    const validEvents = await fetchMeetings(insertedAccount.id);
-    if (validEvents) {
-      await syncMeetingsToDatabase(validEvents, insertedAccount.id, user.id);
-      console.log("Initial meeting sync completed successfully");
-      setSyncStatus("done");
-    } else {
-      console.log("No meetings fetched to sync.");
-      setSyncStatus("done");
-    }
-
-    // Reset auth state, disable polling, and clear localStorage
-    setAuthData(null);
-    setShowModal(false);
-    setAccountName("");
-    setSelectedColor("#ffffff");
-    setPollingEnabled(false);
-    localStorage.removeItem("tempLinkedAccount");
-    queryClient.invalidateQueries({ queryKey: ["linkedAccounts"] });
   };
 
-  // Handle unlinking a linked account
   const handleUnlinkAccount = async (id: string) => {
     const supabase = createClient();
     const { error } = await supabase
@@ -212,10 +134,8 @@ const Accounts = () => {
     queryClient.invalidateQueries({ queryKey: ["linkedAccounts"] });
   };
 
-  // Handle manual resync of meetings for a given account
   const handleResyncAccount = async (account: LinkedAccount) => {
     const accountId = account.id;
-    // Set status to syncing for this account
     setManualResyncStatus((prev) => ({ ...prev, [accountId]: "syncing" }));
 
     const supabase = createClient();
@@ -247,67 +167,83 @@ const Accounts = () => {
   };
 
   return (
-    <div className="min-h-screen bg-overlay-5 flex flex-col p-4">
+    <div className="min-h-screen">
       {isLoading ? (
         <p className="text-white/40">Loading accounts...</p>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {(linkedAccounts || []).map((account: LinkedAccount) => (
-            <div
-              key={account.id}
-              className="p-4 bg-overlay-10 rounded-xl flex flex-col items-center gap-2 relative"
-            >
-              <div className="flex items-center gap-2">
-                {/* Color circle */}
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: account.color || "#ffffff" }}
-                />
-                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-overlay-15">
-                  <Image
-                    src={
-                      account.provider === "google" ? googleIcon : microsoftIcon
-                    }
-                    alt={account.provider}
-                    width={24}
-                    height={24}
+        <div className="space-y-8">
+          <div className="flex items-end justify-between">
+            <div className="space-y-1">
+              <h1 className="text-[22px] font-medium">Accounts</h1>
+              <p className="text-sm text-white/40">
+                View and manage all your linked accounts
+              </p>
+            </div>
+            <Button size="base" variant="outline" className="w-fit gap-1">
+              <PlusIcon className="w-4 h-4" />
+              Add Account
+            </Button>
+          </div>
+          <div className="h-[1px] w-full bg-gradient-to-r from-overlay-5 via-overlay-15 to-overlay-5"></div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {(linkedAccounts || []).map((account: LinkedAccount) => (
+              <div
+                key={account.id}
+                className="p-4 bg-overlay-5 border-[1px] border-overlay-10 rounded-xl flex flex-col items-center gap-2 relative"
+              >
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: account.color || "#ffffff" }}
                   />
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-overlay-15">
+                    <Image
+                      src={
+                        account.provider === "google"
+                          ? googleIcon
+                          : microsoftIcon
+                      }
+                      alt={account.provider}
+                      width={24}
+                      height={24}
+                    />
+                  </div>
+                </div>
+                <p className="text-sm font-medium">
+                  {account.account_name ? account.account_name : account.email}
+                </p>
+                {account.last_synced && (
+                  <p className="text-xs text-white/40">
+                    Last synced:{" "}
+                    {parseUtcTimestamp(account.last_synced).toLocaleString()}
+                  </p>
+                )}
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    onClick={() => handleUnlinkAccount(account.id)}
+                    size="sm"
+                    variant="outline"
+                  >
+                    Unlink
+                  </Button>
+                  <Button
+                    onClick={() => handleResyncAccount(account)}
+                    size="sm"
+                    variant="outline"
+                  >
+                    {manualResyncStatus[account.id] === "syncing"
+                      ? "Resyncing..."
+                      : "Resync"}
+                  </Button>
                 </div>
               </div>
-              <p className="text-sm font-medium">
-                {account.account_name ? account.account_name : account.email}
-              </p>
-              {account.last_synced && (
-                <p className="text-xs text-white/40">
-                  Last synced:{" "}
-                  {parseUtcTimestamp(account.last_synced).toLocaleString()}
-                </p>
-              )}
-              <div className="flex gap-2 mt-2">
-                <Button
-                  onClick={() => handleUnlinkAccount(account.id)}
-                  size="sm"
-                  variant="outline"
-                >
-                  Unlink
-                </Button>
-                <Button
-                  onClick={() => handleResyncAccount(account)}
-                  size="sm"
-                  variant="outline"
-                >
-                  {manualResyncStatus[account.id] === "syncing"
-                    ? "Resyncing..."
-                    : "Resync"}
-                </Button>
-              </div>
+            ))}
+            <div
+              onClick={handleAddAccount}
+              className="cursor-pointer border-2 border-dotted border-overlay-15 hover:border-overlay-30 hover:bg-overlay-5 group transition-all duration-300 flex items-center justify-center rounded-xl p-4 min-h-40"
+            >
+              <PlusIcon className="w-6 h-6 group-hover:rotate-90 transition-all duration-300 ease-in-out" />
             </div>
-          ))}
-          <div
-            onClick={handleAddAccount}
-            className="cursor-pointer border-2 border-dotted border-white/40 flex items-center justify-center rounded-xl p-4"
-          >
-            <PlusIcon className="w-6 h-6" />
           </div>
         </div>
       )}

@@ -35,7 +35,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-overlay-5">
+    <div className="flex min-h-screen items-center justify-center">
       <div className="w-full max-w-[400px] rounded-2xl bg-overlay-5 p-8 border border-overlay-10 backdrop-blur-lg flex items-center flex-col">
         <div className="text-center flex items-center flex-col">
           <Image alt="Linkcal Logo" className="w-[110px]" src={linkcalLogo} />

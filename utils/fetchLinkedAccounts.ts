@@ -8,7 +8,10 @@ export async function fetchLinkedAccounts(userId: string) {
     .eq("user_id", userId);
 
   if (error) {
-    console.error("Error fetching linked accounts:", error);
+    console.error(
+      "[fetchLinkedAccounts.ts] Error fetching linked accounts:",
+      error
+    );
     return [];
   }
   return data;

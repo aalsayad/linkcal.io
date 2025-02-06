@@ -89,15 +89,26 @@ const useUserData = () => {
   });
 };
 
-const Sidebar = () => {
+export default function Sidebar({
+  showSidebar = true,
+}: {
+  showSidebar?: boolean;
+}) {
+  if (!showSidebar) {
+    return null;
+  }
+
   const { data, isLoading } = useUserData();
   const user = data?.user;
   const linkedAccounts = data?.linkedAccounts || [];
 
+  const pathname = usePathname();
+  if (pathname.includes("/login") || pathname.includes("/auth")) return null;
+
   return (
     <div className="h-full w-[300px] bg-overlay-5 border-r border-overlay-10 flex flex-col">
       {/* Logo */}
-      <div className="h-14 px-6 border-b border-overlay-10 flex items-center">
+      <div className="p-6 pt-8 border-b border-overlay-10 flex items-center">
         <Link href="/">
           <Image alt="Linkcal Logo" className="w-14" src={linkcalLogo} />
         </Link>
@@ -165,6 +176,4 @@ const Sidebar = () => {
       </div>
     </div>
   );
-};
-
-export default Sidebar;
+}

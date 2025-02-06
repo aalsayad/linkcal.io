@@ -13,26 +13,26 @@ export async function forwardMeetings(
   sourceAccountId: string,
   targetAccountId: string
 ) {
-  console.log("🚀 Starting meeting forwarding process...");
-  console.log(`📤 Source Account: ${sourceAccountId}`);
-  console.log(`📥 Target Account: ${targetAccountId}`);
+  console.log("[forwardMeetings.ts] Starting meeting forwarding process...");
+  console.log(`[forwardMeetings.ts] Source Account: ${sourceAccountId}`);
+  console.log(`[forwardMeetings.ts] Target Account: ${targetAccountId}`);
 
   const supabase = await createClient();
 
   // Verify user authentication
-  console.log("🔐 Verifying user authentication...");
+  console.log("[forwardMeetings.ts] Verifying user authentication...");
   const {
     data: { user },
     error: authError,
   } = await supabase.auth.getUser();
   if (authError || !user) {
-    console.error("❌ Authentication failed:", authError);
+    console.error("[forwardMeetings.ts] Authentication failed:", authError);
     throw new Error("Authentication required");
   }
-  console.log("✅ User authenticated:", user.id);
+  console.log("[forwardMeetings.ts] User authenticated:", user.id);
 
   // Get source account meetings
-  console.log("📚 Fetching source account meetings...");
+  console.log("[forwardMeetings.ts] Fetching source account meetings...");
   const { data: sourceMeetings, error: meetingsError } = await supabase
     .from("meetings")
     .select("*")
@@ -40,13 +40,18 @@ export async function forwardMeetings(
     .eq("user_id", user.id);
 
   if (meetingsError || !sourceMeetings) {
-    console.error("❌ Failed to fetch meetings:", meetingsError);
+    console.error(
+      "[forwardMeetings.ts] Failed to fetch meetings:",
+      meetingsError
+    );
     throw new Error("Failed to get meetings");
   }
-  console.log(`📊 Found ${sourceMeetings.length} meetings to process`);
+  console.log(
+    `[forwardMeetings.ts] Found ${sourceMeetings.length} meetings to process`
+  );
 
   // Get target account details
-  console.log("🎯 Fetching target account details...");
+  console.log("[forwardMeetings.ts] Fetching target account details...");
   const { data: targetAccount, error: accountError } = await supabase
     .from("linked_accounts")
     .select("*")
@@ -55,13 +60,16 @@ export async function forwardMeetings(
     .single();
 
   if (accountError || !targetAccount) {
-    console.error("❌ Invalid target account:", accountError);
+    console.error("[forwardMeetings.ts] Invalid target account:", accountError);
     throw new Error("Invalid target account");
   }
-  console.log(`✅ Target account found: ${targetAccount.provider}`);
+  console.log(
+    "[forwardMeetings.ts] Target account found:",
+    targetAccount.provider
+  );
 
   // Refresh target account token
-  console.log("🔄 Refreshing target account token...");
+  console.log("[forwardMeetings.ts] Refreshing target account token...");
   let accessToken: string;
   try {
     if (targetAccount.provider === "google") {
@@ -71,7 +79,7 @@ export async function forwardMeetings(
         .from("linked_accounts")
         .update({ refresh_token: tokens.refreshToken })
         .eq("id", targetAccountId);
-      console.log("✅ Google token refreshed");
+      console.log("[forwardMeetings.ts] Google token refreshed");
     } else if (["azure-ad", "microsoft"].includes(targetAccount.provider)) {
       const tokens = await refreshMicrosoftToken(targetAccount.refresh_token);
       accessToken = tokens.accessToken;
@@ -79,22 +87,24 @@ export async function forwardMeetings(
         .from("linked_accounts")
         .update({ refresh_token: tokens.refreshToken })
         .eq("id", targetAccountId);
-      console.log("✅ Microsoft token refreshed");
+      console.log("[forwardMeetings.ts] Microsoft token refreshed");
     } else {
       throw new Error("Unsupported target provider");
     }
   } catch (error) {
-    console.error("❌ Token refresh failed:", error);
+    console.error("[forwardMeetings.ts] Token refresh failed:", error);
     throw new Error("Failed to refresh target account token");
   }
 
   // Function to forward a single meeting
   async function forwardMeeting(meeting: Meeting): Promise<void> {
-    console.log(`\n🔄 Processing meeting: "${meeting.name}"`);
+    console.log(`[forwardMeetings.ts] Processing meeting: "${meeting.name}"`);
 
     // Check if this meeting originated from the target account
     if (meeting.name?.includes(`forwarded from ${targetAccountId}`)) {
-      console.log(`⏭️ Meeting originated from target account, skipping...`);
+      console.log(
+        "[forwardMeetings.ts] Meeting originated from target account, skipping..."
+      );
       return;
     }
 
@@ -121,11 +131,13 @@ ${meeting.message ? `Body: ${meeting.message}\n` : ""}${
 -----
 Meeting forwarded by Linkcal.io`;
 
-    console.log("📝 Formatted meeting details prepared");
+    console.log("[forwardMeetings.ts] Formatted meeting details prepared");
 
     if (targetAccount.provider === "google") {
       const eventTitle = `Linkcal Timeblock | ${meeting.name}`;
-      console.log("🔍 Checking for existing Google Calendar timeblock...");
+      console.log(
+        "[forwardMeetings.ts] Checking for existing Google Calendar timeblock..."
+      );
 
       const existingEvents = await axios.get(
         "https://www.googleapis.com/calendar/v3/calendars/primary/events",
@@ -143,11 +155,15 @@ Meeting forwarded by Linkcal.io`;
       );
 
       if (existingEvents.data.items?.length > 0) {
-        console.log("⏭️ Meeting already forwarded, skipping...");
+        console.log(
+          "[forwardMeetings.ts] Meeting already forwarded, skipping..."
+        );
         return;
       }
 
-      console.log("📅 Creating new Google Calendar timeblock...");
+      console.log(
+        "[forwardMeetings.ts] Creating new Google Calendar timeblock..."
+      );
       const timeBlock = {
         summary: eventTitle,
         description: meetingDetails,
@@ -167,10 +183,14 @@ Meeting forwarded by Linkcal.io`;
           },
         }
       );
-      console.log("✅ Google Calendar timeblock created successfully");
+      console.log(
+        "[forwardMeetings.ts] Google Calendar timeblock created successfully"
+      );
     } else if (["azure-ad", "microsoft"].includes(targetAccount.provider)) {
       const eventTitle = `Linkcal Timeblock | ${meeting.name}`;
-      console.log("🔍 Checking for existing Microsoft Calendar timeblock...");
+      console.log(
+        "[forwardMeetings.ts] Checking for existing Microsoft Calendar timeblock..."
+      );
 
       const existingEvents = await axios.get(
         "https://graph.microsoft.com/v1.0/me/events",
@@ -186,11 +206,15 @@ Meeting forwarded by Linkcal.io`;
       );
 
       if (existingEvents.data.value?.length > 0) {
-        console.log("⏭️ Meeting already forwarded, skipping...");
+        console.log(
+          "[forwardMeetings.ts] Meeting already forwarded, skipping..."
+        );
         return;
       }
 
-      console.log("📅 Creating new Microsoft Calendar timeblock...");
+      console.log(
+        "[forwardMeetings.ts] Creating new Microsoft Calendar timeblock..."
+      );
       const timeBlock = {
         subject: eventTitle,
         body: { contentType: "text", content: meetingDetails },
@@ -207,7 +231,9 @@ Meeting forwarded by Linkcal.io`;
           headers: { Authorization: `Bearer ${accessToken}` },
         }
       );
-      console.log("✅ Microsoft Calendar timeblock created successfully");
+      console.log(
+        "[forwardMeetings.ts] Microsoft Calendar timeblock created successfully"
+      );
     }
   }
 
@@ -222,7 +248,9 @@ Meeting forwarded by Linkcal.io`;
         return;
       } catch (error) {
         if (attempt === maxRetries) throw error;
-        console.log(`Retry attempt ${attempt} for meeting: ${meeting.name}`);
+        console.log(
+          `[forwardMeetings.ts] Retry attempt ${attempt} for meeting: ${meeting.name}`
+        );
         await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
       }
     }
@@ -245,7 +273,7 @@ Meeting forwarded by Linkcal.io`;
   }
 
   // Forward meetings with retry mechanism
-  console.log("\n🚀 Starting to forward meetings...");
+  console.log("[forwardMeetings.ts] Starting to forward meetings...");
   const results = [];
   let successCount = 0;
   let failureCount = 0;
@@ -255,18 +283,22 @@ Meeting forwarded by Linkcal.io`;
       await forwardMeetingWithRetry(meeting);
       results.push({ success: true, meetingId: meeting.id });
       successCount++;
-      console.log(`✅ Successfully forwarded meeting: ${meeting.name}`);
+      console.log(
+        `[forwardMeetings.ts] Successfully forwarded meeting: ${meeting.name}`
+      );
     } catch (error) {
-      console.error(`❌ Failed to forward meeting: ${meeting.name}`, error);
+      console.error(
+        `[forwardMeetings.ts] Failed to forward meeting: ${meeting.name}`,
+        error
+      );
       results.push({ success: false, meetingId: meeting.id });
       failureCount++;
     }
   }
 
-  console.log(`\n🏁 Forwarding process complete:
-  - Total meetings processed: ${sourceMeetings.length}
-  - Successfully forwarded: ${successCount}
-  - Failed to forward: ${failureCount}`);
+  console.log(
+    `[forwardMeetings.ts] Forwarding process complete: - Total meetings processed: ${sourceMeetings.length} - Successfully forwarded: ${successCount} - Failed to forward: ${failureCount}`
+  );
 
   return { success: true, count: successCount };
 }

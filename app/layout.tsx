@@ -41,8 +41,8 @@ export default function RootLayout({
 
               {/* Main content area with offset */}
               <div className="w-full flex flex-col items-center overflow-y-auto">
-                <Navbar />
-                <div className="max-w-[1350px] w-full">{children}</div>
+                {/* <Navbar /> */}
+                <div className="max-w-[1350px] w-full p-8">{children}</div>
               </div>
             </div>
           </body>

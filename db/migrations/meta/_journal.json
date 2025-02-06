@@ -78,6 +78,27 @@
       "when": 1738431106891,
       "tag": "0010_warm_ben_parker",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1738615516730,
+      "tag": "0011_chemical_runaways",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1738742389022,
+      "tag": "0012_useful_shockwave",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1738764092268,
+      "tag": "0013_special_skullbuster",
+      "breakpoints": true
     }
   ]
 }
