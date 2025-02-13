@@ -13,6 +13,7 @@ import {
 } from "@/utils/calendar/providers/microsoft";
 import { validateMeetings } from "@/utils/calendar/validation";
 import type { Meeting } from "@/db/schema";
+import { normalizeProvider } from "@/utils/normalizeProvider";
 
 /**
  * Fetches meetings from the user's linked accounts.
@@ -66,7 +67,10 @@ export async function fetchMeetings(
 
     let events: Omit<Meeting, "user_id" | "created_at" | "updated_at">[];
 
-    switch (account.provider) {
+    const canonicalProvider = normalizeProvider(account.provider);
+    console.log("[fetchMeetings.ts] Canonical provider:", canonicalProvider);
+
+    switch (canonicalProvider) {
       case "google": {
         console.debug(
           "[fetchMeetings.ts] Fetching events from Google Calendar..."
@@ -97,7 +101,7 @@ export async function fetchMeetings(
         break;
       }
       default:
-        throw new Error("Unsupported calendar provider");
+        throw new Error(`Unsupported provider: ${account.provider}`);
     }
 
     const validatedMeetings = validateMeetings(events);

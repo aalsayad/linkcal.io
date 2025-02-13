@@ -143,7 +143,8 @@ export async function linkAccount(
           webhook_resource_id: subscriptionData.subscriptionId,
           webhook_expiration: new Date(subscriptionData.expirationDateTime),
         })
-        .eq("id", insertedAccount.id);
+        .eq("id", insertedAccount.id)
+        .select();
       if (updateError) {
         console.error(
           "[linkAccount.ts] Error updating linked account with Microsoft subscription data:",

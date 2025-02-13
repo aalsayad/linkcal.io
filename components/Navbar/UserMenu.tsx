@@ -3,7 +3,6 @@
 import { createClient } from "@/utils/supabase/client";
 import React, { useState, useRef } from "react";
 import {
-  ChevronDownIcon,
   Cog6ToothIcon,
   ArrowLeftEndOnRectangleIcon,
   LockClosedIcon,
@@ -12,41 +11,50 @@ import {
 import Image from "next/image";
 import useClickOutside from "@/hooks/useClickOutside";
 import cn from "@/utils/cn";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 
-const UserMenu = ({
-  user,
-  imageUrl,
-}: {
-  user: { name: string; email: string };
+interface User {
+  name: string;
+  email: string;
+}
+
+interface UserMenuProps {
+  user: User;
   imageUrl: string;
-}) => {
+}
+
+const UserMenu = ({ user, imageUrl }: UserMenuProps) => {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Close the dropdown if a click occurs outside the container (which includes both the toggle and the dropdown)
   useClickOutside<HTMLDivElement>(dropdownRef, () => setIsOpen(false));
 
   const handleLogout = async () => {
     const supabase = createClient();
     const { error } = await supabase.auth.signOut();
     if (error) {
-      console.log(error);
+      console.error("Error signing out:", error);
     }
     router.push("/login");
     router.refresh();
   };
 
   return (
-    <div ref={dropdownRef} className="relative">
+    <div ref={dropdownRef} className="relative w-full">
+      {/* Toggle button */}
       <div
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => setIsOpen((prev) => !prev)}
         className={cn(
-          "flex items-center justify-between gap-1.5 p-1 px-2 rounded-lg cursor-pointer transition-all hover:bg-white/5 group select-none w-full",
-          { "bg-white/5": isOpen }
+          "flex items-center justify-between gap-1.5 p-1 px-2 cursor-pointer transition-all border-[1px] border-white/0 hover:bg-greybackground_light group select-none w-full relative z-[999]",
+          isOpen
+            ? "rounded-bl-lg rounded-br-lg border-[1px] border-white/10 bg-greybackground_light"
+            : "rounded-lg"
         )}
       >
+        {/* User Avatar and Name */}
         <div className="flex items-center gap-2">
           <div className="h-7 w-7 rounded-full overflow-hidden bg-white/10 border-[1px] border-overlay-20">
             <Image
@@ -68,18 +76,20 @@ const UserMenu = ({
         />
       </div>
 
+      {/* Dropdown Menu */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
             transition={{
-              duration: 0.25,
-              ease: [0.4, 0, 0.2, 1],
+              opacity: { duration: 0.1 },
+              y: { duration: 0.25, ease: [0.6, 0.05, 0.01, 0.99] },
             }}
             className={cn(
-              "absolute right-0 bottom-full w-full mb-2 min-w-48 max-w-60 origin-bottom-right rounded-lg bg-overlay-5 border border-overlay-10 shadow-lg select-none z-50"
+              "absolute bg-greybackground_light right-0 bottom-full w-full min-w-48 origin-bottom-right border border-b-white/0 border-white/10 shadow-lg select-none z-[1]",
+              "rounded-t-lg rounded-b-none"
             )}
           >
             <div className="p-1.5">
@@ -100,7 +110,7 @@ const UserMenu = ({
                   {user.email}
                 </span>
               </div>
-              <div className="border-t border-overlay-10 my-1" />
+              <div className="border-t border-white/10 my-1" />
               <button className="w-full flex items-center gap-2 p-2 text-xs md:text-sm rounded-md hover:bg-white/5 transition-colors select-none">
                 <Cog6ToothIcon className="h-4 w-4 text-white/60" />
                 Settings

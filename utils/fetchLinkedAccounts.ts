@@ -4,7 +4,9 @@ export async function fetchLinkedAccounts(userId: string) {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("linked_accounts")
-    .select("id, email, provider, color, account_name, last_synced")
+    .select(
+      "account_name, color, email, id, last_synced, provider, user_id, webhook_resource_id, webhook_expiration"
+    )
     .eq("user_id", userId);
 
   if (error) {

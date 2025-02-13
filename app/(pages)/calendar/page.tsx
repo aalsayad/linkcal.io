@@ -16,11 +16,7 @@ const CalendarPage = () => {
     return () => clearInterval(intervalId);
   }, []);
 
-  return (
-    <div>
-      <Calendar />
-    </div>
-  );
+  return <div>{/* <Calendar /> */}</div>;
 };
 
 export default CalendarPage;

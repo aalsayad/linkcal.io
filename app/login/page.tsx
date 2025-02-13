@@ -2,7 +2,8 @@
 
 import Button from "@/components/Button";
 import Image from "next/image";
-import linkcalLogo from "@/public/linkcal.svg";
+
+import linkcalio from "@/public/logos/linkcalio.svg";
 import { createClient } from "@/utils/supabase/client";
 
 export default function LoginPage() {
@@ -15,8 +16,8 @@ export default function LoginPage() {
         redirectTo: "http://localhost:3000/auth/callback",
         scopes:
           provider === "azure"
-            ? "email offline_access Calendars.ReadWrite Calendars.Read User.Read profile openid User.ReadBasic.All"
-            : "email https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events",
+            ? "email offline_access User.Read profile openid User.ReadBasic.All"
+            : "email",
         queryParams:
           provider === "google"
             ? {
@@ -35,17 +36,17 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="w-full max-w-[400px] rounded-2xl bg-overlay-5 p-8 border border-overlay-10 backdrop-blur-lg flex items-center flex-col">
+    <div className="flex min-h-[calc(100vh-64px)] items-center justify-center">
+      <div className="w-full max-w-[400px] rounded-2xl bg-greybackground p-8 border border-overlay-10 backdrop-blur-lg flex items-center flex-col">
         <div className="text-center flex items-center flex-col">
-          <Image alt="Linkcal Logo" className="w-[110px]" src={linkcalLogo} />
-          <p className="mt-4 text-sm text-white/60 w-3/4">
+          <Image alt="Linkcal Logo" className="w-[180px]" src={linkcalio} />
+          <p className="mt-6 text-sm text-white/60 w-3/4">
             Securely sync and manage your calendars with Google
           </p>
         </div>
 
         <div className="w-full my-12 flex flex-col gap-4">
-          <Button onClick={() => handleOAuthLogin("google")}>
+          <Button onClick={() => handleOAuthLogin("google")} className="w-full">
             <svg
               className="h-3.5 w-3.5"
               xmlns="http://www.w3.org/2000/svg"
@@ -57,7 +58,7 @@ export default function LoginPage() {
             Continue with Google
           </Button>
 
-          <Button onClick={() => handleOAuthLogin("azure")}>
+          <Button onClick={() => handleOAuthLogin("azure")} className="w-full">
             <svg
               className="h-3.5 w-3.5"
               xmlns="http://www.w3.org/2000/svg"

@@ -39,7 +39,7 @@ export default function RootLayout({
             {/* Main content area */}
             <div className="w-full flex flex-col items-center overflow-y-auto">
               {/* <Navbar /> can be re-enabled if needed */}
-              <div className="max-w-[1350px] w-full p-8">{children}</div>
+              <div className="max-w-[1350px] w-full p-8 py-5">{children}</div>
             </div>
           </div>
         </body>

@@ -22,17 +22,17 @@ const Button: React.FC<ButtonProps> = ({
   onClick,
 }) => {
   const buttonClass = cn(
-    "rounded-full font-medium w-full flex items-center justify-center cursor-pointer",
+    "rounded-lg font-medium w-fit flex items-center justify-center cursor-pointer",
     {
       "bg-white/95 text-background hover:bg-white": variant === "solid",
       "bg-white/5 text-white/80 hover:bg-white/10 hover:text-white transition-all duration-300":
         variant === "secondary",
-      "bg-transparent border-[1px] border-overlay-10 hover:border-overlay-20 hover:bg-overlay-10 transition-all duration-300":
+      "bg-transparent border-[1px] border-white/10 hover:border-white/20 hover:bg-white/5 transition-all duration-300 opacity-70 hover:opacity-100":
         variant === "outline",
       "bg-transparent hover:bg-overlay-10 transition-all duration-300":
         variant === "ghost",
-      "px-3 py-2 text-sm gap-3": size === "base",
-      "px-2.5 py-1.5 text-xs md:text-sm gap-2": size === "sm",
+      "p-2 text-sm gap-1": size === "base",
+      "px-2.5 py-1.5 text-xs md:text-sm gap-1": size === "sm",
       "opacity-50 cursor-not-allowed": disabled,
     },
     className

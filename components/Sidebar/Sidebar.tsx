@@ -5,13 +5,13 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
-import {
-  CalendarIcon,
-  ForwardIcon,
-  AtSymbolIcon,
-} from "@heroicons/react/24/outline";
+import AccountsIcon from "@/public/icons/accounts.svg";
+import CalendarIcon from "@/public/icons/calendar.svg";
+import AutomationsIcon from "@/public/icons/automations.svg";
+import MeetingsIcon from "@/public/icons/meetings.svg";
+import BookingsIcon from "@/public/icons/bookings.svg";
 import cn from "@/utils/cn";
-import linkcalLogo from "@/public/linkcal.svg";
+import linkcalLogo from "@/public/logos/linkcalio.svg";
 import UserMenu from "../Navbar/UserMenu";
 import { createClient } from "@/utils/supabase/client";
 import { fetchLinkedAccounts } from "@/utils/fetchLinkedAccounts";
@@ -19,12 +19,14 @@ import { fetchLinkedAccounts } from "@/utils/fetchLinkedAccounts";
 // Reusable navigation link component
 const NavLink = ({
   href,
-  icon: Icon,
+  icon,
   children,
+  disabled,
 }: {
   href: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: string;
   children: React.ReactNode;
+  disabled?: boolean;
 }) => {
   const pathname = usePathname();
   const isActive = pathname === href;
@@ -33,15 +35,18 @@ const NavLink = ({
     <Link
       href={href}
       className={cn(
-        "flex items-center gap-2 p-2 rounded-lg text-sm transition-all duration-300 ease-in-out",
-        "hover:bg-overlay-10 hover:text-white",
-        isActive ? "bg-overlay-10 text-white" : "text-white/70"
+        "flex items-center gap-2 p-3 py-2 rounded-lg text-sm transition-all duration-300 ease-in-out group",
+        "hover:bg-greybackground_light hover:text-white",
+        isActive ? "bg-greybackground_light text-white" : "text-white/70",
+        disabled && "opacity-20 cursor-not-allowed pointer-events-none"
       )}
     >
-      <Icon
+      <Image
+        src={icon}
+        alt="Navigation Icon"
         className={cn(
-          "w-4 transition-all duration-300 ease-in-out",
-          isActive ? "opacity-100" : "opacity-60 hover:opacity-100"
+          "w-[13px] opacity-30 group-hover:opacity-100 transition-all duration-300 ease-in-out",
+          isActive ? "opacity-100" : "opacity-30"
         )}
       />
       {children}
@@ -101,33 +106,45 @@ export default function Sidebar({
   const { data, isLoading } = useUserData();
   const user = data?.user;
   const linkedAccounts = data?.linkedAccounts || [];
-
   const pathname = usePathname();
   if (pathname.includes("/login") || pathname.includes("/auth")) return null;
 
   return (
-    <div className="h-full w-[300px] bg-overlay-5 border-r border-overlay-10 flex flex-col">
+    <div className="h-full w-[275px] bg-greybackground border-r border-faded20 flex flex-col">
       {/* Logo */}
-      <div className="p-6 pt-8 border-b border-overlay-10 flex items-center">
+      <div className="p-6 h-16 border-b border-faded20 flex items-center">
         <Link href="/">
-          <Image alt="Linkcal Logo" className="w-14" src={linkcalLogo} />
+          <Image alt="Linkcal Logo" className="w-20" src={linkcalLogo} />
         </Link>
       </div>
 
       {/* Navigation */}
-      <nav className="flex flex-col flex-grow gap-1 p-3">
+      <nav className="flex flex-col flex-grow gap-0.5 p-3">
+        <NavLink href="/accounts" icon={AccountsIcon}>
+          <div className="flex items-center w-full">
+            <span>Accounts</span>
+            {linkedAccounts.length > 0 && (
+              <div className="ml-2 bg-white/10 text-white w-4 h-4 flex items-center justify-center rounded-[6px] text-[10px] font-extralight">
+                {linkedAccounts.length}
+              </div>
+            )}
+          </div>
+        </NavLink>
         <NavLink href="/calendar" icon={CalendarIcon}>
           Calendar
         </NavLink>
-        <NavLink href="/accounts" icon={AtSymbolIcon}>
-          Accounts
-        </NavLink>
-        <NavLink href="/automations" icon={ForwardIcon}>
+        <NavLink href="/automations" icon={AutomationsIcon} disabled>
           Automations
+        </NavLink>
+        <NavLink href="/meetings" icon={MeetingsIcon} disabled>
+          Meetings
+        </NavLink>
+        <NavLink href="/bookings" icon={BookingsIcon} disabled>
+          Bookings
         </NavLink>
 
         {/* Linked Accounts Section */}
-        <div className="mt-4">
+        {/* <div className="mt-4">
           <div className="flex items-center gap-2 my-2">
             <span className="text-xs text-white/70 opacity-50 whitespace-nowrap">
               Linked Accounts
@@ -157,11 +174,11 @@ export default function Sidebar({
                   {account.email}
                 </Link>
               ))}
-        </div>
+        </div> */}
       </nav>
 
       {/* User Menu */}
-      <div className="p-3 border-t border-overlay-10">
+      <div className="p-3 border-t border-faded20">
         {user ? (
           <UserMenu user={user} imageUrl={user.imageUrl} />
         ) : (
